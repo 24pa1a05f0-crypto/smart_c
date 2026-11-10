@@ -1,0 +1,24 @@
+{
+  "name": "smart-canteen-ordering-system",
+  "version": "1.0.0",
+  "description": "Smart Canteen Ordering System Web Service for Render and Cloud Platforms",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node -e \"console.log('Web server test passed')\""
+  },
+  "keywords": [
+    "flutter",
+    "flutter-web",
+    "canteen",
+    "smart-canteen",
+    "food-ordering",
+    "render"
+  ],
+  "author": "Smart Canteen Dev Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
+

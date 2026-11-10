@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>CampusBite - Smart Canteen Ordering System</title>
+  <meta name="description" content="Fast, Fresh & Queue-Free Campus Dining with Smart Pickup Slots">
+  <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
+  <!-- Firebase Web SDK Compatibility Layer -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #059669;
+      --primary-light: #10B981;
+      --primary-dark: #047857;
+      --primary-subtle: #D1FAE5;
+      --secondary: #FF6B35;
+      --secondary-subtle: #FFEDD5;
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --veg: #16A34A;
+      --veg-bg: #DCFCE7;
+      --non-veg: #DC2626;
+      --non-veg-bg: #FEE2E2;
+      --sidebar-width: 250px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F172A;
+      --card-bg: #1E293B;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border: #334155;
+      --primary-subtle: #064E3B;
+      --secondary-subtle: #7C2D12;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* Layout */
+    #sidebar {
+      width: var(--sidebar-width);
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      padding: 24px 16px;
+      z-index: 100;
+    }
+
+    #main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    /* Header */
+    .top-header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(5,150,105,0.25);
+    }
+    .brand-name { font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+    .brand-tag { font-size: 11px; color: var(--text-muted); }
+
+    /* Nav Links */
+    .nav-list { list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 6px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+    .nav-item:hover { background: var(--border); color: var(--text); }
+    .nav-item.active { background: var(--primary-subtle); color: var(--primary); font-weight: 700; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--secondary);
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    /* Header actions */
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .wallet-chip {
+      background: var(--primary-subtle);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      border: 1px solid rgba(5,150,105,0.2);
+    }
+    .role-chip {
+      background: var(--secondary-subtle);
+      color: var(--secondary);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    /* Tab views */
+    .tab-view { display: none; padding: 24px; max-width: 1280px; margin: 0 auto; width: 100%; }
+    .tab-view.active { display: block; animation: fadeIn 0.25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Search & Categories */
+    .search-bar-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .search-input-box {
+      flex: 1;
+      min-width: 260px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+    }
+    .search-input-box input {
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      width: 100%;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .filter-btn {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* Promo Card */
+    .promo-banner {
+      background: linear-gradient(135deg, #047857 0%, #10B981 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 20px rgba(5,150,105,0.2);
+    }
+    .promo-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .promo-code-btn {
+      background: white;
+      color: var(--primary-dark);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Category Chips */
+    .category-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+      scrollbar-width: none;
+    }
+    .category-scroll::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cat-chip:hover { border-color: var(--primary); }
+    .cat-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* Food Grid */
+    .food-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .food-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .food-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+    .card-img-wrap { position: relative; height: 160px; overflow: hidden; background: #e2e8f0; }
+    .card-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .diet-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.95);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #0f172a;
+    }
+    .time-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .sold-out-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .card-body { padding: 14px; display: flex; flex-direction: column; flex: 1; }
+    .card-rating-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+    .rating-val { color: #f59e0b; font-weight: 700; }
+    .card-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px; flex: 1; }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .card-price { font-size: 18px; font-weight: 900; color: var(--primary); }
+    .add-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .add-btn:hover { background: var(--primary-dark); }
+    .qty-stepper {
+      display: flex;
+      align-items: center;
+      background: var(--primary-subtle);
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .qty-btn {
+      background: transparent;
+      border: none;
+      color: var(--primary);
+      padding: 6px 10px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .qty-count { padding: 0 4px; font-weight: 800; font-size: 13px; color: var(--primary-dark); }
+
+    /* Cart & Checkout */
+    .cart-grid { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
+    .cart-items-card, .bill-card, .slot-picker-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .cart-item-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .cart-item-img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; }
+    .bill-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); }
+    .bill-row.total { font-size: 18px; font-weight: 900; color: var(--primary); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .primary-btn {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .primary-btn:hover { background: var(--primary-dark); }
+
+    /* Pickup Slots */
+    .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+    .slot-pill {
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .slot-pill:hover { border-color: var(--primary); }
+    .slot-pill.active { border-color: var(--primary); background: var(--primary-subtle); }
+    .slot-pill.disabled { opacity: 0.5; cursor: not-allowed; background: #f1f5f9; }
+    .slot-time { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+    .slot-status { font-size: 11px; color: var(--primary); font-weight: 600; }
+
+    /* Tracking Stepper */
+    .stepper { display: flex; justify-content: space-between; position: relative; margin: 30px 0; }
+    .stepper::before {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      right: 20px;
+      height: 3px;
+      background: var(--border);
+      z-index: 1;
+    }
+    .step-item { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .step-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 3px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+    .step-item.active .step-circle { border-color: var(--primary); background: var(--primary); color: white; box-shadow: 0 0 12px rgba(5,150,105,0.4); }
+    .step-item.passed .step-circle { border-color: var(--primary); background: var(--primary-dark); color: white; }
+    .step-name { font-size: 12px; font-weight: 700; }
+
+    /* Token Badge */
+    .token-card {
+      background: var(--card-bg);
+      border: 2px solid var(--primary);
+      border-radius: 20px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(5,150,105,0.1);
+      margin: 20px 0;
+    }
+    .token-number { font-size: 44px; font-weight: 900; color: var(--primary); letter-spacing: 2px; }
+
+    /* Admin KDS */
+    .kds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+    .kds-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--card-bg);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+
+    /* Mobile bottom nav */
+    #mobile-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      padding: 10px;
+      justify-content: space-around;
+      z-index: 100;
+    }
+    .mob-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+    }
+    .mob-nav-item.active { color: var(--primary); }
+
+    @media (max-width: 820px) {
+      #sidebar { display: none; }
+      #mobile-nav { display: flex; }
+      .cart-grid { grid-template-columns: 1fr; }
+      .top-header { padding: 12px 16px; }
+      .tab-view { padding: 16px 16px 80px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Desktop Sidebar -->
+  <aside id="sidebar">
+    <div class="brand-logo">
+      <div class="brand-icon">🍱</div>
+      <div>
+        <div class="brand-name">CampusBite</div>
+        <div class="brand-tag">Smart Canteen</div>
+      </div>
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="switchTab('menu')">
+        <span>🍔</span> Food Menu
+      </li>
+      <li class="nav-item" onclick="switchTab('cart')">
+        <span>🛍️</span> Cart
+        <span class="nav-badge" id="sidebar-cart-badge">0</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('orders')">
+        <span>📋</span> My Orders
+        <span class="nav-badge" id="sidebar-orders-badge" style="background:var(--primary); display:none;">0</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('profile')">
+        <span>👤</span> Profile & Wallet
+      </li>
+      <li class="nav-item" onclick="switchTab('admin')">
+        <span>👨‍🍳</span> Kitchen Admin
+      </li>
+    </ul>
+
+    <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border);">
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">EVALUATOR SHORTCUT</div>
+      <button onclick="toggleUserRole()" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); font-weight:700; cursor:pointer; font-size:12px; color:var(--text);">
+        🔄 Switch: <span id="current-role-label">Student Mode</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Container -->
+  <div id="main-content">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="brand-icon" style="width:34px; height:34px; font-size:18px;">🍱</div>
+        <div>
+          <div style="font-weight:700; font-size:15px;" id="header-greeting">Hi, Rahul Sharma 👋</div>
+          <div style="font-size:11px; color:var(--text-muted);">Main Campus Canteen • Counter 1 & 2</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="wallet-chip" onclick="showTopUpModal()">
+          <span>💳</span> <span id="header-wallet-balance">₹450</span>
+        </div>
+        <div class="role-chip" id="header-role-badge" onclick="toggleUserRole()">
+          STUDENT
+        </div>
+        <button class="icon-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+          🌓
+        </button>
+      </div>
+    </header>
+
+    <!-- 1. MENU TAB -->
+    <section id="tab-menu" class="tab-view active">
+      <!-- Promo Banner -->
+      <div class="promo-banner">
+        <div>
+          <div style="font-size:11px; font-weight:800; opacity:0.8; letter-spacing:1px; margin-bottom:2px;">CAMPUS SPECIAL OFFER</div>
+          <div class="promo-title">Flat 20% OFF Your First Meal!</div>
+          <div style="font-size:12px; opacity:0.9;">Apply coupon <b>STUDENT20</b> at checkout</div>
+        </div>
+        <button class="promo-code-btn" onclick="applyPromoShortcut('STUDENT20')">APPLY 20%</button>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="search-bar-row">
+        <div class="search-input-box">
+          <span>🔍</span>
+          <input type="text" id="menu-search-input" placeholder="Search biryani, dosa, pasta, coffee, burger..." oninput="filterMenuItems()">
+        </div>
+        <button class="filter-btn" id="veg-toggle-btn" onclick="toggleVegFilter()">
+          <span>🟢</span> Veg Only
+        </button>
+        <select id="sort-select" onchange="filterMenuItems()" style="padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:var(--card-bg); color:var(--text); font-weight:600; font-size:13px; outline:none; cursor:pointer;">
+          <option value="popular">⭐ Top Rated</option>
+          <option value="price-low">₹ Price: Low to High</option>
+          <option value="price-high">₹ Price: High to Low</option>
+          <option value="fast">⚡ Fastest Prep</option>
+        </select>
+      </div>
+
+      <!-- Category Chips -->
+      <div class="category-scroll" id="categories-container"></div>
+
+      <!-- Food Grid -->
+      <div class="food-grid" id="food-grid"></div>
+    </section>
+
+    <!-- 2. CART TAB -->
+    <section id="tab-cart" class="tab-view">
+      <h2 style="font-size:22px; font-weight:800; margin-bottom:16px;">My Cart</h2>
+      <div id="cart-container"></div>
+    </section>
+
+    <!-- 3. ORDERS TAB -->
+    <section id="tab-orders" class="tab-view">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:22px; font-weight:800;">My Orders</h2>
+        <div style="display:flex; gap:8px;">
+          <button class="filter-btn active" id="btn-active-orders" onclick="filterOrderList('active')">Active Orders</button>
+          <button class="filter-btn" id="btn-past-orders" onclick="filterOrderList('past')">Past Orders</button>
+        </div>
+      </div>
+      <div id="orders-container"></div>
+    </section>
+
+    <!-- 4. PROFILE TAB -->
+    <section id="tab-profile" class="tab-view">
+      <div style="max-width:680px; margin:0 auto;">
+        <!-- User Profile Card -->
+        <div class="cart-items-card" style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+          <div style="width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--primary-light)); color:white; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800;">
+            R
+          </div>
+          <div>
+            <div style="font-size:18px; font-weight:800;" id="prof-name">Rahul Sharma</div>
+            <div style="font-size:13px; color:var(--text-muted);" id="prof-email">student@campus.edu</div>
+            <div style="display:inline-block; margin-top:6px; background:var(--primary-subtle); color:var(--primary-dark); font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px;" id="prof-badge">
+              STUDENT • CS-2024-402
+            </div>
+          </div>
+        </div>
+
+        <!-- Wallet Card -->
+        <div style="background:linear-gradient(135deg, #065F46 0%, #059669 100%); color:white; border-radius:20px; padding:24px; margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:14px; font-weight:600;">Campus Dining Wallet</div>
+            <button onclick="showTopUpModal()" style="background:white; color:#065F46; border:none; padding:6px 14px; border-radius:20px; font-weight:800; font-size:12px; cursor:pointer;">+ Top-Up</button>
+          </div>
+          <div style="font-size:36px; font-weight:900; margin:14px 0 6px 0;" id="prof-wallet-val">₹450.00</div>
+          <div style="font-size:12px; opacity:0.85;">Instant, queue-free pickup verification with zero payment delays</div>
+        </div>
+
+        <!-- Stats -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px;">
+          <div class="cart-items-card" style="text-align:center;">
+            <div style="font-size:24px; font-weight:900; color:var(--primary);" id="prof-total-orders">2</div>
+            <div style="font-size:12px; color:var(--text-muted);">Total Orders Placed</div>
+          </div>
+          <div class="cart-items-card" style="text-align:center;">
+            <div style="font-size:24px; font-weight:900; color:var(--secondary);">180 pts</div>
+            <div style="font-size:12px; color:var(--text-muted);">Campus Loyalty Points</div>
+          </div>
+        </div>
+
+        <!-- Role Tester -->
+        <div class="cart-items-card" style="margin-bottom:20px;">
+          <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Evaluator Testing Controls</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Test the system seamlessly as a Student Diner or as a Canteen Kitchen Staff.</div>
+          <div style="display:flex; gap:10px;">
+            <button onclick="setUserRole('student')" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); font-weight:700; cursor:pointer;">🎓 Student Mode</button>
+            <button onclick="setUserRole('admin')" style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--primary); color:white; font-weight:700; cursor:pointer;">👨‍🍳 Canteen Admin</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ADMIN / KITCHEN DASHBOARD TAB -->
+    <section id="tab-admin" class="tab-view">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div>
+          <h2 style="font-size:22px; font-weight:800;">Kitchen KDS & Admin</h2>
+          <div style="font-size:13px; color:var(--text-muted);">Live order fulfillment, slot load, and menu catalog management</div>
+        </div>
+        <button class="primary-btn" style="width:auto; margin:0;" onclick="showAddDishModal()">+ Add New Dish</button>
+      </div>
+
+      <!-- Live metrics -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:20px;">
+        <div class="cart-items-card">
+          <div style="font-size:12px; color:var(--text-muted);">Today's Revenue</div>
+          <div style="font-size:22px; font-weight:900; color:var(--primary); margin-top:4px;" id="admin-revenue">₹651.00</div>
+        </div>
+        <div class="cart-items-card">
+          <div style="font-size:12px; color:var(--text-muted);">Active Kitchen Orders</div>
+          <div style="font-size:22px; font-weight:900; color:var(--secondary); margin-top:4px;" id="admin-active-orders">2</div>
+        </div>
+        <div class="cart-items-card">
+          <div style="font-size:12px; color:var(--text-muted);">Total Dishes</div>
+          <div style="font-size:22px; font-weight:900; margin-top:4px;" id="admin-total-dishes">16</div>
+        </div>
+      </div>
+
+      <!-- KDS Orders Grid -->
+      <h3 style="font-size:16px; font-weight:700; margin-bottom:10px;">Live Kitchen Orders Board</h3>
+      <div class="kds-grid" id="kds-orders-grid"></div>
+
+      <!-- Menu Stock Management -->
+      <h3 style="font-size:16px; font-weight:700; margin:24px 0 10px 0;">Menu Catalog & Live Stock Toggles</h3>
+      <div class="cart-items-card" id="admin-menu-list"></div>
+    </section>
+  </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav id="mobile-nav">
+    <div class="mob-nav-item active" onclick="switchTab('menu')"><span>🍔</span>Menu</div>
+    <div class="mob-nav-item" onclick="switchTab('cart')"><span>🛍️</span>Cart <span id="mob-cart-badge" style="display:none; position:absolute; top:-2px; right:16px; background:var(--secondary); color:white; border-radius:50%; font-size:9px; padding:2px 5px;">0</span></div>
+    <div class="mob-nav-item" onclick="switchTab('orders')"><span>📋</span>Orders</div>
+    <div class="mob-nav-item" onclick="switchTab('profile')"><span>👤</span>Profile</div>
+    <div class="mob-nav-item" onclick="switchTab('admin')"><span>👨‍🍳</span>Admin</div>
+  </nav>
+
+  <!-- MODAL: Food Details & Customization -->
+  <div class="modal-overlay" id="dish-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeDishModal()">&times;</button>
+      <div id="dish-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Top-Up Wallet -->
+  <div class="modal-overlay" id="topup-modal">
+    <div class="modal-box" style="max-width:380px;">
+      <button class="modal-close" onclick="closeTopUpModal()">&times;</button>
+      <h3 style="font-size:18px; font-weight:800; margin-bottom:8px;">Top-Up Campus Wallet</h3>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Instant reload for queue-free dining.</p>
+      <input type="number" id="topup-input" value="200" style="width:100%; padding:12px; border-radius:10px; border:1px solid var(--border); font-size:16px; font-weight:700; margin-bottom:12px;">
+      <div style="display:flex; gap:8px; margin-bottom:16px;">
+        <button class="filter-btn" onclick="document.getElementById('topup-input').value=100">+₹100</button>
+        <button class="filter-btn" onclick="document.getElementById('topup-input').value=200">+₹200</button>
+        <button class="filter-btn" onclick="document.getElementById('topup-input').value=500">+₹500</button>
+      </div>
+      <button class="primary-btn" onclick="executeTopUp()">Add Funds to Wallet</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Add New Dish (Admin) -->
+  <div class="modal-overlay" id="add-dish-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeAddDishModal()">&times;</button>
+      <h3 style="font-size:18px; font-weight:800; margin-bottom:14px;">Add New Menu Item</h3>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <input type="text" id="new-dish-name" placeholder="Dish Name (e.g. Tandoori Paneer Pizza)" style="padding:10px; border-radius:10px; border:1px solid var(--border);">
+        <div style="display:flex; gap:10px;">
+          <input type="number" id="new-dish-price" placeholder="Price (₹)" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
+          <select id="new-dish-cat" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Snacks" selected>Snacks</option>
+            <option value="Beverages">Beverages</option>
+            <option value="Desserts">Desserts</option>
+            <option value="Daily Specials">Daily Specials</option>
+          </select>
+        </div>
+        <textarea id="new-dish-desc" placeholder="Ingredients & description..." rows="2" style="padding:10px; border-radius:10px; border:1px solid var(--border);"></textarea>
+        <input type="text" id="new-dish-img" value="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600" placeholder="Image URL" style="padding:10px; border-radius:10px; border:1px solid var(--border);">
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;">
+          <input type="checkbox" id="new-dish-veg" checked> Vegetarian Dish (🟢)
+        </label>
+        <button class="primary-btn" onclick="saveNewDish()">Add to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SCRIPT -->
+  <script>
+    // --- STATE MANAGEMENT ---
+    let currentUser = {
+      uid: 'student_101',
+      displayName: 'Rahul Sharma',
+      email: 'student@campus.edu',
+      role: 'student',
+      walletBalance: 450.0,
+      studentId: 'CS-2024-402'
+    };
+
+    let categories = ['All', 'Breakfast', 'Lunch', 'Snacks', 'Beverages', 'Desserts', 'Daily Specials'];
+    let selectedCategory = 'All';
+    let onlyVeg = false;
+    let currentSort = 'popular';
+    let cart = [];
+    let appliedCoupon = null;
+    let selectedSlotId = 'slot_4';
+
+    let pickupSlots = [
+      { id: 'slot_1', label: '09:00 AM - 09:30 AM', period: 'Morning', booked: 12, max: 25 },
+      { id: 'slot_2', label: '09:30 AM - 10:00 AM', period: 'Morning', booked: 20, max: 25 },
+      { id: 'slot_3', label: '10:00 AM - 10:30 AM', period: 'Morning', booked: 8, max: 20 },
+      { id: 'slot_4', label: '12:00 PM - 12:30 PM', period: 'Lunch', booked: 28, max: 35 },
+      { id: 'slot_5', label: '12:30 PM - 01:00 PM', period: 'Lunch', booked: 37, max: 40 },
+      { id: 'slot_6', label: '01:00 PM - 01:30 PM', period: 'Lunch', booked: 22, max: 40 },
+      { id: 'slot_7', label: '01:30 PM - 02:00 PM', period: 'Lunch', booked: 14, max: 30 },
+      { id: 'slot_8', label: '03:30 PM - 04:00 PM', period: 'Evening Snacks', booked: 10, max: 25 },
+      { id: 'slot_9', label: '04:00 PM - 04:30 PM', period: 'Evening Snacks', booked: 16, max: 25 },
+      { id: 'slot_10', label: '05:00 PM - 05:30 PM', period: 'Evening Snacks', booked: 5, max: 20 }
+    ];
+
+    let foodItems = [
+      { id: 'f1', name: 'Crispy Masala Dosa', category: 'Breakfast', price: 90, desc: 'Golden crepe stuffed with spiced potato filling, coconut chutney & sambar.', img: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600', isVeg: true, rating: 4.8, reviews: 154, prep: 8, inStock: true },
+      { id: 'f2', name: 'Idli & Medu Vada Combo', category: 'Breakfast', price: 80, desc: 'Pillow-soft steamed idlis and crispy golden medu vada with sambar.', img: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600', isVeg: true, rating: 4.7, reviews: 98, prep: 5, inStock: true },
+      { id: 'f3', name: 'Classic Golden Pancakes', category: 'Breakfast', price: 130, desc: 'Fluffy butter pancakes with honey, whipped butter and seasonal berries.', img: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=600', isVeg: true, rating: 4.6, reviews: 72, prep: 12, inStock: true },
+      { id: 'f4', name: 'Hyderabadi Dum Biryani (Chicken)', category: 'Lunch', price: 210, desc: 'Slow-cooked fragrant basmati rice with tender chicken, saffron & raita.', img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600', isVeg: false, rating: 4.9, reviews: 340, prep: 10, inStock: true },
+      { id: 'f5', name: 'Royal Paneer Butter Masala', category: 'Lunch', price: 190, desc: 'Cottage cheese in rich creamy cashew gravy, 2 butter naans & jeera rice.', img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=600', isVeg: true, rating: 4.8, reviews: 215, prep: 15, inStock: true },
+      { id: 'f6', name: 'Creamy Alfredo White Pasta', category: 'Lunch', price: 160, desc: 'Penne in garlic herb parmesan sauce with mushrooms and sweet corn.', img: 'https://images.unsplash.com/photo-1645112411341-6c4fd023714a?w=600', isVeg: true, rating: 4.7, reviews: 120, prep: 12, inStock: true },
+      { id: 'f7', name: 'Crispy Zesty Chicken Burger', category: 'Lunch', price: 175, desc: 'Spiced fried chicken breast with melted cheddar, jalapeños & salted fries.', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600', isVeg: false, rating: 4.8, reviews: 280, prep: 10, inStock: true },
+      { id: 'f8', name: 'Loaded Cheesy Nachos', category: 'Snacks', price: 140, desc: 'Crispy tortilla chips drowned in warm cheddar cheese sauce & salsa.', img: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=600', isVeg: true, rating: 4.6, reviews: 164, prep: 8, inStock: true },
+      { id: 'f9', name: 'Paneer Tikka Kathi Roll', category: 'Snacks', price: 120, desc: 'Smoky tandoori paneer wrapped in whole wheat paratha with mint relish.', img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600', isVeg: true, rating: 4.7, reviews: 195, prep: 10, inStock: true },
+      { id: 'f10', name: 'Crispy Punjabi Samosas (2 pcs)', category: 'Snacks', price: 45, desc: 'Golden crust filled with tempered spiced potatoes and green peas.', img: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600', isVeg: true, rating: 4.9, reviews: 420, prep: 3, inStock: true },
+      { id: 'f11', name: 'Iced Hazelnut Cold Coffee', category: 'Beverages', price: 110, desc: 'Slow-steeped espresso with whole milk, hazelnut and cold foam.', img: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600', isVeg: true, rating: 4.9, reviews: 310, prep: 4, inStock: true },
+      { id: 'f12', name: 'Alphonso Mango Smoothie', category: 'Beverages', price: 120, desc: 'Pure ripe Alphonso mangoes blended with Greek yogurt & chia seeds.', img: 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=600', isVeg: true, rating: 4.8, reviews: 145, prep: 5, inStock: true },
+      { id: 'f13', name: 'Cardamom Cutting Chai', category: 'Beverages', price: 25, desc: 'Authentic Indian tea brewed with crushed ginger, cardamom and boiled milk.', img: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=600', isVeg: true, rating: 4.9, reviews: 512, prep: 3, inStock: true },
+      { id: 'f14', name: 'Molten Chocolate Lava Cake', category: 'Desserts', price: 125, desc: 'Warm dark chocolate cake with an irresistibly gooey molten center.', img: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600', isVeg: true, rating: 4.9, reviews: 230, prep: 8, inStock: true },
+      { id: 'f15', name: 'Warm Gulab Jamun in Rabri', category: 'Desserts', price: 95, desc: 'Rose saffron sugar dumplings served on thick chilled creamy rabri.', img: 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=600', isVeg: true, rating: 4.8, reviews: 160, prep: 4, inStock: true },
+      { id: 'f16', name: 'Woodfired Margherita Pizza', category: 'Daily Specials', price: 199, desc: 'Artisan crust with San Marzano tomatoes, fresh mozzarella and basil.', img: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600', isVeg: true, rating: 4.9, reviews: 285, prep: 14, inStock: true }
+    ];
+
+    let orders = [
+      {
+        id: 'ord_1',
+        token: '#CT-101',
+        userId: 'student_101',
+        userName: 'Rahul Sharma',
+        items: [{ food: foodItems[0], qty: 1 }, { food: foodItems[10], qty: 1 }],
+        subtotal: 200,
+        tax: 10,
+        fee: 10,
+        discount: 20,
+        total: 200,
+        slot: pickupSlots[3],
+        counter: 'Counter 2 (Express Lane)',
+        payment: 'Campus Wallet',
+        status: 'ready',
+        date: 'Today, 12:15 PM'
+      },
+      {
+        id: 'ord_2',
+        token: '#CT-102',
+        userId: 'student_101',
+        userName: 'Rahul Sharma',
+        items: [{ food: foodItems[3], qty: 2 }],
+        subtotal: 420,
+        tax: 21,
+        fee: 10,
+        discount: 0,
+        total: 451,
+        slot: pickupSlots[4],
+        counter: 'Counter 1 (Main Hall)',
+        payment: 'UPI (GPay)',
+        status: 'preparing',
+        date: 'Today, 12:28 PM'
+      }
+    ];
+
+    // --- NAVIGATION ---
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.querySelectorAll('.mob-nav-item').forEach(n => n.classList.remove('active'));
+
+      const target = document.getElementById(`tab-${tabName}`);
+      if (target) target.classList.add('active');
+
+      const navIndices = { menu: 0, cart: 1, orders: 2, profile: 3, admin: 4 };
+      const idx = navIndices[tabName];
+      if (idx !== undefined) {
+        const sideItems = document.querySelectorAll('.nav-item');
+        if (sideItems[idx]) sideItems[idx].classList.add('active');
+
+        const mobItems = document.querySelectorAll('.mob-nav-item');
+        if (mobItems[idx]) mobItems[idx].classList.add('active');
+      }
+
+      if (tabName === 'cart') renderCart();
+      if (tabName === 'orders') renderOrders();
+      if (tabName === 'admin') renderAdmin();
+    }
+
+    // --- MENU RENDERING ---
+    function renderCategories() {
+      const container = document.getElementById('categories-container');
+      container.innerHTML = categories.map(cat => `
+        <div class="cat-chip ${cat === selectedCategory ? 'active' : ''}" onclick="selectCategory('${cat}')">
+          ${cat}
+        </div>
+      `).join('');
+    }
+
+    function selectCategory(cat) {
+      selectedCategory = cat;
+      renderCategories();
+      filterMenuItems();
+    }
+
+    function toggleVegFilter() {
+      onlyVeg = !onlyVeg;
+      const btn = document.getElementById('veg-toggle-btn');
+      btn.classList.toggle('active', onlyVeg);
+      filterMenuItems();
+    }
+
+    function filterMenuItems() {
+      const q = document.getElementById('menu-search-input').value.toLowerCase().trim();
+      const sort = document.getElementById('sort-select').value;
+
+      let list = foodItems.filter(item => {
+        if (selectedCategory !== 'All' && item.category !== selectedCategory) return false;
+        if (onlyVeg && !item.isVeg) return false;
+        if (q && !item.name.toLowerCase().includes(q) && !item.desc.toLowerCase().includes(q) && !item.category.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      if (sort === 'price-low') list.sort((a,b) => a.price - b.price);
+      else if (sort === 'price-high') list.sort((a,b) => b.price - a.price);
+      else if (sort === 'fast') list.sort((a,b) => a.prep - b.prep);
+      else list.sort((a,b) => b.rating - a.rating);
+
+      const grid = document.getElementById('food-grid');
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; text-align:center; padding:50px 20px; color:var(--text-muted);">
+            <div style="font-size:40px; margin-bottom:10px;">🔍</div>
+            <div style="font-weight:700; font-size:16px;">No matching food items found</div>
+            <div style="font-size:13px; margin-top:4px;">Try another search term or clear the filter.</div>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = list.map(item => {
+        const inCart = cart.find(c => c.food.id === item.id);
+        const qty = inCart ? inCart.qty : 0;
+
+        return `
+          <div class="food-card" onclick="openDishModal('${item.id}')">
+            <div class="card-img-wrap">
+              <img src="${item.img}" alt="${item.name}" loading="lazy">
+              <div class="diet-badge">
+                <span style="color:${item.isVeg ? 'var(--veg)' : 'var(--non-veg)'}; font-size:12px;">●</span>
+                ${item.isVeg ? 'VEG' : 'NON-VEG'}
+              </div>
+              <div class="time-badge">⏱️ ${item.prep}m</div>
+              ${!item.inStock ? '<div class="sold-out-overlay">SOLD OUT</div>' : ''}
+            </div>
+            <div class="card-body">
+              <div class="card-rating-row">
+                <span class="rating-val">★ ${item.rating.toFixed(1)} (${item.reviews})</span>
+                <span>${item.category}</span>
+              </div>
+              <div class="card-title">${item.name}</div>
+              <div class="card-desc">${item.desc}</div>
+              <div class="card-footer" onclick="event.stopPropagation()">
+                <div class="card-price">₹${item.price}</div>
+                ${!item.inStock ? '<span style="font-size:12px; color:var(--text-muted)">Sold Out</span>' :
+                  qty === 0 ? `
+                    <button class="add-btn" onclick="addToCart('${item.id}')">+ ADD</button>
+                  ` : `
+                    <div class="qty-stepper">
+                      <button class="qty-btn" onclick="updateCartQty('${item.id}', -1)">-</button>
+                      <span class="qty-count">${qty}</span>
+                      <button class="qty-btn" onclick="updateCartQty('${item.id}', 1)">+</button>
+                    </div>
+                  `
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- CART ACTIONS ---
+    function addToCart(foodId, extraNotes = '') {
+      const food = foodItems.find(f => f.id === foodId);
+      if (!food || !food.inStock) return;
+
+      const existing = cart.find(c => c.food.id === foodId);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({ food, qty: 1, notes: extraNotes });
+      }
+      updateCartBadge();
+      filterMenuItems();
+    }
+
+    function updateCartQty(foodId, delta) {
+      const idx = cart.findIndex(c => c.food.id === foodId);
+      if (idx !== -1) {
+        cart[idx].qty += delta;
+        if (cart[idx].qty <= 0) {
+          cart.splice(idx, 1);
+        }
+      }
+      updateCartBadge();
+      filterMenuItems();
+      if (document.getElementById('tab-cart').classList.contains('active')) {
+        renderCart();
+      }
+    }
+
+    function updateCartBadge() {
+      const totalCount = cart.reduce((s, c) => s + c.qty, 0);
+      document.getElementById('sidebar-cart-badge').innerText = totalCount;
+      const mobBadge = document.getElementById('mob-cart-badge');
+      mobBadge.innerText = totalCount;
+      mobBadge.style.display = totalCount > 0 ? 'block' : 'none';
+    }
+
+    function applyPromoShortcut(code) {
+      appliedCoupon = code;
+      alert(`🎉 Promo coupon ${code} applied for 20% discount!`);
+      if (document.getElementById('tab-cart').classList.contains('active')) renderCart();
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cart-container');
+      if (cart.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:60px 20px;">
+            <div style="font-size:50px; margin-bottom:12px;">🛍️</div>
+            <h3 style="font-size:20px; font-weight:800; margin-bottom:6px;">Your Cart is Empty</h3>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Explore the canteen menu and pick up your hot meals queue-free.</p>
+            <button class="primary-btn" style="width:auto; padding:12px 28px; margin:0 auto;" onclick="switchTab('menu')">Browse Menu</button>
+          </div>
+        `;
+        return;
+      }
+
+      const subtotal = cart.reduce((s, c) => s + (c.food.price * c.qty), 0);
+      let discount = 0;
+      if (appliedCoupon === 'STUDENT20') discount = subtotal * 0.20;
+      else if (appliedCoupon === 'HUNGRY10') discount = subtotal * 0.10;
+      const fee = 10;
+      const tax = (subtotal - discount) * 0.05;
+      const grandTotal = Math.max(0, subtotal - discount + fee + tax);
+
+      container.innerHTML = `
+        <div class="cart-grid">
+          <!-- Left: Items & Slots -->
+          <div>
+            <div class="cart-items-card" style="margin-bottom:20px;">
+              <h3 style="font-size:16px; font-weight:800; margin-bottom:14px;">Items in Order (${cart.reduce((s,c)=>s+c.qty, 0)})</h3>
+              ${cart.map(item => `
+                <div class="cart-item-row">
+                  <img src="${item.food.img}" class="cart-item-img">
+                  <div style="flex:1;">
+                    <div style="font-weight:700; font-size:14px;">${item.food.name}</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin:2px 0;">₹${item.food.price} each</div>
+                    <div style="font-weight:800; font-size:15px; color:var(--primary);">₹${item.food.price * item.qty}</div>
+                  </div>
+                  <div class="qty-stepper">
+                    <button class="qty-btn" onclick="updateCartQty('${item.food.id}', -1)">-</button>
+                    <span class="qty-count">${item.qty}</span>
+                    <button class="qty-btn" onclick="updateCartQty('${item.food.id}', 1)">+</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Pickup Slots Picker -->
+            <div class="slot-picker-card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:16px; font-weight:800;">Select Pickup Time Slot</h3>
+                <span style="font-size:11px; font-weight:800; background:var(--primary-subtle); color:var(--primary); padding:3px 8px; border-radius:6px;">⚡ Queue-Free</span>
+              </div>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Your order will be fresh and packed at your chosen time.</p>
+              
+              <div class="slot-grid">
+                ${pickupSlots.map(s => {
+                  const isFull = s.booked >= s.max;
+                  const isSelected = s.id === selectedSlotId;
+                  return `
+                    <div class="slot-pill ${isSelected ? 'active' : ''} ${isFull ? 'disabled' : ''}" onclick="${isFull ? '' : `selectSlot('${s.id}')`}">
+                      <div class="slot-time">${s.label}</div>
+                      <div class="slot-status" style="color:${isFull ? '#ef4444' : (s.max - s.booked <= 3 ? '#d97706' : 'var(--primary)')}">
+                        ${isFull ? 'Full' : `${s.max - s.booked} slots left`}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Summary & Checkout -->
+          <div>
+            <div class="bill-card">
+              <!-- Coupon box -->
+              <div style="margin-bottom:16px;">
+                <div style="font-weight:700; font-size:13px; margin-bottom:6px;">Discount Coupon</div>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="coupon-box" value="${appliedCoupon || ''}" placeholder="Enter STUDENT20" style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--border); font-size:13px; text-transform:uppercase;">
+                  <button class="filter-btn" onclick="applyEnteredCoupon()">Apply</button>
+                </div>
+              </div>
+
+              <!-- Payment Method -->
+              <div style="margin-bottom:16px;">
+                <div style="font-weight:700; font-size:13px; margin-bottom:8px;">Payment Option</div>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; cursor:pointer;">
+                  <input type="radio" name="pay-method" value="wallet" checked>
+                  <span>💳 Campus Wallet (Bal: ₹${currentUser.walletBalance.toFixed(0)})</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; cursor:pointer;">
+                  <input type="radio" name="pay-method" value="upi">
+                  <span>📱 UPI QR / GooglePay / PhonePe</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                  <input type="radio" name="pay-method" value="cash">
+                  <span>💵 Pay Cash on Pickup Counter</span>
+                </label>
+              </div>
+
+              <!-- Bill breakdown -->
+              <div class="bill-row"><span>Item Subtotal:</span><span>₹${subtotal.toFixed(2)}</span></div>
+              ${discount > 0 ? `<div class="bill-row" style="color:var(--primary); font-weight:700;"><span>Coupon (${appliedCoupon}):</span><span>-₹${discount.toFixed(2)}</span></div>` : ''}
+              <div class="bill-row"><span>Packaging & Tray:</span><span>₹${fee.toFixed(2)}</span></div>
+              <div class="bill-row"><span>Canteen GST (5%):</span><span>₹${tax.toFixed(2)}</span></div>
+              <div class="bill-row total"><span>Total Payable:</span><span>₹${grandTotal.toFixed(2)}</span></div>
+
+              <button class="primary-btn" onclick="placeOrder(${grandTotal})">
+                Place Order (₹${grandTotal.toFixed(0)}) →
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectSlot(id) {
+      selectedSlotId = id;
+      renderCart();
+    }
+
+    function applyEnteredCoupon() {
+      const code = document.getElementById('coupon-box').value.trim().toUpperCase();
+      if (code === 'STUDENT20' || code === 'HUNGRY10') {
+        appliedCoupon = code;
+        alert(`Success! Coupon "${code}" applied.`);
+      } else {
+        alert('Invalid coupon. Try STUDENT20 for 20% off or HUNGRY10 for 10% off.');
+      }
+      renderCart();
+    }
+
+    function placeOrder(amount) {
+      const payMethodEl = document.querySelector('input[name="pay-method"]:checked');
+      const payMethod = payMethodEl ? payMethodEl.value : 'wallet';
+
+      if (payMethod === 'wallet' && currentUser.walletBalance < amount) {
+        if (confirm(`Insufficient wallet balance (₹${currentUser.walletBalance}). Would you like to top-up ₹500 now?`)) {
+          currentUser.walletBalance += 500;
+          updateHeaderWallet();
+          placeOrder(amount);
+        }
+        return;
+      }
+
+      if (payMethod === 'wallet') {
+        currentUser.walletBalance -= amount;
+        updateHeaderWallet();
+      }
+
+      const tokenNum = Math.floor(100 + Math.random() * 899);
+      const token = `#CT-${tokenNum}`;
+      const selectedSlot = pickupSlots.find(s => s.id === selectedSlotId) || pickupSlots[3];
+      selectedSlot.booked += 1;
+
+      const newOrder = {
+        id: `ord_${Date.now()}`,
+        token: token,
+        userId: currentUser.uid,
+        userName: currentUser.displayName,
+        items: [...cart],
+        total: amount,
+        slot: selectedSlot,
+        counter: 'Counter 1 (Main Hall)',
+        payment: payMethod === 'wallet' ? 'Campus Wallet' : (payMethod === 'upi' ? 'UPI' : 'Cash at Counter'),
+        status: 'placed',
+        date: 'Just now'
+      };
+
+      orders.unshift(newOrder);
+      cart = [];
+      appliedCoupon = null;
+      updateCartBadge();
+
+      alert(`🎉 Order ${token} placed successfully!\n\nYour pickup slot is ${selectedSlot.label} at Counter 1.`);
+      switchTab('orders');
+    }
+
+    // --- ORDERS & TRACKING ---
+    let orderFilter = 'active';
+
+    function filterOrderList(type) {
+      orderFilter = type;
+      document.getElementById('btn-active-orders').classList.toggle('active', type === 'active');
+      document.getElementById('btn-past-orders').classList.toggle('active', type === 'past');
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const container = document.getElementById('orders-container');
+      const list = orders.filter(o => {
+        if (orderFilter === 'active') return o.status !== 'completed' && o.status !== 'cancelled';
+        return o.status === 'completed' || o.status === 'cancelled';
+      });
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:50px; color:var(--text-muted);">
+            <div style="font-size:44px; margin-bottom:10px;">📋</div>
+            <div style="font-weight:700;">No ${orderFilter} orders</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(order => {
+        const statusMap = {
+          placed: { label: 'Order Placed', color: '#2563eb', step: 0 },
+          preparing: { label: 'In Kitchen Prep', color: '#d97706', step: 1 },
+          ready: { label: 'Ready at Counter', color: '#059669', step: 2 },
+          completed: { label: 'Collected / Done', color: '#64748b', step: 3 }
+        };
+        const s = statusMap[order.status] || statusMap.placed;
+
+        return `
+          <div class="cart-items-card" style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div>
+                <span style="font-size:20px; font-weight:900; color:var(--primary);">${order.token}</span>
+                <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${order.date}</span>
+              </div>
+              <span style="background:${s.color}22; color:${s.color}; font-size:12px; font-weight:800; padding:4px 12px; border-radius:20px;">
+                ${s.label}
+              </span>
+            </div>
+
+            <!-- Stepper -->
+            <div class="stepper">
+              <div class="step-item ${s.step >= 0 ? 'active' : ''}">
+                <div class="step-circle">${s.step > 0 ? '✓' : '1'}</div>
+                <div class="step-name">Placed</div>
+              </div>
+              <div class="step-item ${s.step >= 1 ? 'active' : ''}">
+                <div class="step-circle">${s.step > 1 ? '✓' : '2'}</div>
+                <div class="step-name">Cooking</div>
+              </div>
+              <div class="step-item ${s.step >= 2 ? 'active' : ''}">
+                <div class="step-circle">${s.step > 2 ? '✓' : '3'}</div>
+                <div class="step-name">Ready</div>
+              </div>
+              <div class="step-item ${s.step >= 3 ? 'active' : ''}">
+                <div class="step-circle">4</div>
+                <div class="step-name">Collected</div>
+              </div>
+            </div>
+
+            <!-- Pickup Token QR info -->
+            <div class="token-card">
+              <div style="font-size:11px; font-weight:800; letter-spacing:1px; color:var(--primary);">DIGITAL PICKUP TOKEN</div>
+              <div class="token-number">${order.token}</div>
+              <div style="font-weight:700; font-size:14px; margin-top:4px;">${order.slot.label} • ${order.counter}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Show this token number or scan at the counter</div>
+            </div>
+
+            <div style="font-size:13px; font-weight:600; margin-bottom:8px;">Items (${order.items.length}):</div>
+            <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+              ${order.items.map(i => `${i.qty}x ${i.food.name}`).join(', ')}
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:12px;">
+              <span style="font-weight:800; font-size:16px;">Paid: ₹${order.total.toFixed(0)}</span>
+              <div style="display:flex; gap:8px;">
+                <button class="filter-btn" onclick="advanceOrderStatus('${order.id}')" title="Test Simulator">
+                  ⚡ Advance Status
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function advanceOrderStatus(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+      if (order.status === 'placed') order.status = 'preparing';
+      else if (order.status === 'preparing') order.status = 'ready';
+      else if (order.status === 'ready') order.status = 'completed';
+      else order.status = 'placed';
+      renderOrders();
+      renderAdmin();
+    }
+
+    // --- ADMIN / KDS ---
+    function renderAdmin() {
+      const rev = orders.reduce((s,o) => s + o.total, 0);
+      document.getElementById('admin-revenue').innerText = `₹${rev.toFixed(0)}`;
+      document.getElementById('admin-active-orders').innerText = orders.filter(o => o.status !== 'completed').length;
+      document.getElementById('admin-total-dishes').innerText = foodItems.length;
+
+      // Render KDS Grid
+      const kdsGrid = document.getElementById('kds-orders-grid');
+      kdsGrid.innerHTML = orders.map(order => `
+        <div class="kds-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:18px; font-weight:900; color:var(--primary);">${order.token}</span>
+            <span style="font-size:11px; font-weight:800; background:var(--primary-subtle); color:var(--primary); padding:3px 8px; border-radius:12px;">${order.status.toUpperCase()}</span>
+          </div>
+          <div style="font-weight:700; font-size:13px;">${order.userName}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">${order.slot.label}</div>
+          
+          <div style="background:var(--bg); padding:8px; border-radius:8px; font-size:12px; margin-bottom:12px;">
+            ${order.items.map(i => `<div>• <b>${i.qty}x</b> ${i.food.name}</div>`).join('')}
+          </div>
+
+          <div style="display:flex; gap:6px;">
+            <button class="filter-btn" style="flex:1; justify-content:center; padding:6px;" onclick="setOrderStatus('${order.id}', 'preparing')">🍳 Cooking</button>
+            <button class="filter-btn" style="flex:1; justify-content:center; padding:6px; background:var(--primary); color:white;" onclick="setOrderStatus('${order.id}', 'ready')">🔔 Ready</button>
+            <button class="filter-btn" style="flex:1; justify-content:center; padding:6px;" onclick="setOrderStatus('${order.id}', 'completed')">✓ Done</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Render Menu Stock List
+      const menuList = document.getElementById('admin-menu-list');
+      menuList.innerHTML = foodItems.map(f => `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="color:${f.isVeg ? 'var(--veg)' : 'var(--non-veg)'}; font-size:12px;">●</span>
+            <div>
+              <div style="font-weight:700; font-size:14px;">${f.name}</div>
+              <div style="font-size:11px; color:var(--text-muted);">${f.category} • ₹${f.price}</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:11px; font-weight:700; color:${f.inStock ? 'var(--primary)' : '#ef4444'}">${f.inStock ? 'In Stock' : 'Sold Out'}</span>
+            <input type="checkbox" ${f.inStock ? 'checked' : ''} onchange="toggleStock('${f.id}', this.checked)" style="transform:scale(1.2); cursor:pointer;">
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setOrderStatus(orderId, status) {
+      const o = orders.find(x => x.id === orderId);
+      if (o) {
+        o.status = status;
+        renderAdmin();
+      }
+    }
+
+    function toggleStock(foodId, state) {
+      const f = foodItems.find(x => x.id === foodId);
+      if (f) {
+        f.inStock = state;
+        filterMenuItems();
+        renderAdmin();
+      }
+    }
+
+    // --- MODALS ---
+    function openDishModal(id) {
+      const food = foodItems.find(f => f.id === id);
+      if (!food) return;
+
+      const modal = document.getElementById('dish-modal');
+      const content = document.getElementById('dish-modal-content');
+
+      content.innerHTML = `
+        <img src="${food.img}" style="width:100%; height:200px; object-fit:cover; border-radius:14px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; font-weight:800; color:${food.isVeg ? 'var(--veg)' : 'var(--non-veg)'}">● ${food.isVeg ? '100% VEGETARIAN' : 'NON-VEG'}</span>
+          <span style="font-weight:700; color:#f59e0b; font-size:12px;">★ ${food.rating}</span>
+        </div>
+        <h3 style="font-size:20px; font-weight:800; margin-bottom:4px;">${food.name}</h3>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.4; margin-bottom:14px;">${food.desc}</p>
+        <div style="font-size:22px; font-weight:900; color:var(--primary); margin-bottom:16px;">₹${food.price}</div>
+        
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:700; font-size:12px; margin-bottom:4px;">Special Cooking Request:</div>
+          <input type="text" id="modal-notes" placeholder="e.g. Less spicy, extra chutney..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);">
+        </div>
+
+        <button class="primary-btn" onclick="addToCart('${food.id}', document.getElementById('modal-notes').value); closeDishModal();">
+          Add to Cart (₹${food.price})
+        </button>
+      `;
+      modal.classList.add('active');
+    }
+
+    function closeDishModal() {
+      document.getElementById('dish-modal').classList.remove('active');
+    }
+
+    function showTopUpModal() {
+      document.getElementById('topup-modal').classList.add('active');
+    }
+    function closeTopUpModal() {
+      document.getElementById('topup-modal').classList.remove('active');
+    }
+    function executeTopUp() {
+      const val = parseFloat(document.getElementById('topup-input').value) || 0;
+      if (val > 0) {
+        currentUser.walletBalance += val;
+        updateHeaderWallet();
+        closeTopUpModal();
+        alert(`Added ₹${val} to Campus Wallet! New balance: ₹${currentUser.walletBalance.toFixed(0)}`);
+      }
+    }
+
+    function showAddDishModal() {
+      document.getElementById('add-dish-modal').classList.add('active');
+    }
+    function closeAddDishModal() {
+      document.getElementById('add-dish-modal').classList.remove('active');
+    }
+    function saveNewDish() {
+      const name = document.getElementById('new-dish-name').value.trim();
+      const price = parseFloat(document.getElementById('new-dish-price').value) || 0;
+      const cat = document.getElementById('new-dish-cat').value;
+      const desc = document.getElementById('new-dish-desc').value.trim();
+      const img = document.getElementById('new-dish-img').value.trim();
+      const isVeg = document.getElementById('new-dish-veg').checked;
+
+      if (!name || price <= 0) {
+        alert('Please enter valid dish name and price');
+        return;
+      }
+
+      foodItems.unshift({
+        id: `f_${Date.now()}`,
+        name,
+        category: cat,
+        price,
+        desc: desc || 'Chef special freshly prepared dish.',
+        img: img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600',
+        isVeg,
+        rating: 4.8,
+        reviews: 1,
+        prep: 10,
+        inStock: true
+      });
+
+      closeAddDishModal();
+      filterMenuItems();
+      renderAdmin();
+      alert(`Added "${name}" to the canteen menu!`);
+    }
+
+    // --- ROLES & THEME ---
+    function updateHeaderWallet() {
+      document.getElementById('header-wallet-balance').innerText = `₹${currentUser.walletBalance.toFixed(0)}`;
+      const profVal = document.getElementById('prof-wallet-val');
+      if (profVal) profVal.innerText = `₹${currentUser.walletBalance.toFixed(2)}`;
+    }
+
+    function setUserRole(role) {
+      currentUser.role = role;
+      const isA = role === 'admin';
+      document.getElementById('header-role-badge').innerText = isA ? 'ADMIN' : 'STUDENT';
+      document.getElementById('current-role-label').innerText = isA ? 'Canteen Admin' : 'Student Diner';
+      document.getElementById('prof-badge').innerText = isA ? 'CANTEEN ADMIN / MANAGER' : 'STUDENT • CS-2024-402';
+      alert(`Switched to ${isA ? 'Canteen Admin' : 'Student Diner'} mode!`);
+    }
+
+    function toggleUserRole() {
+      setUserRole(currentUser.role === 'admin' ? 'student' : 'admin');
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    }
+
+    // --- INIT ---
+    window.onload = function() {
+      renderCategories();
+      filterMenuItems();
+      updateCartBadge();
+      updateHeaderWallet();
+    };
+  </script>
+</body>
+</html>
+
